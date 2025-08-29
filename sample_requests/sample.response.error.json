@@ -1,0 +1,12 @@
+{
+    "error": {
+      "code": "VALIDATION_FAILED",
+      "message": "Parameter 'n' exceeds maximum of 10000.",
+      "details": {
+        "param": "n",
+        "value": 20000,
+        "max": 10000
+      }
+    }
+  }
+  

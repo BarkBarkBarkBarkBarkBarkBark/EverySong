@@ -1,0 +1,32 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://example.com/response.schema.json",
+    "title": "EverySong Response",
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["playlist_url", "request_params"],
+    "properties": {
+      "playlist_url": {
+        "type": "string",
+        "format": "uri",
+        "pattern": "^https:\\/\\/open\\.spotify\\.com\\/playlist\\/[A-Za-z0-9]+(?:\\?.*)?$",
+        "description": "Public URL to the created Spotify playlist."
+      },
+      "request_params": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "n": { "type": "integer" },
+          "name": { "type": "string" },
+          "public": { "type": "boolean" },
+          "genres_csv": { "type": "string" },
+          "per_genre_batch": { "type": "integer" },
+          "artist_cap": { "type": "integer" },
+          "markets_csv": { "type": "string" },
+          "year_min": { "type": ["integer", "null"] },
+          "year_max": { "type": ["integer", "null"] }
+        }
+      }
+    }
+  }
+  

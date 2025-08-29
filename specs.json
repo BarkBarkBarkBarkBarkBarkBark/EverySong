@@ -1,0 +1,264 @@
+{
+  "name": "EverySong Playlist Generator Agent",
+  "version": "1.0.0",
+  "description": "Turns a natural-language playlist request into parameters for random_mb_to_spotify.py, runs it, and returns the Spotify playlist URL.",
+  "environment": {
+    "required": [
+      "SPOTIPY_CLIENT_ID",
+      "SPOTIPY_CLIENT_SECRET",
+      "SPOTIPY_REDIRECT_URI"
+    ],
+    "optional": [
+      "SPOTIFY_MARKET"
+    ],
+    "notes": [
+      "Use loopback IP literal for redirect URIs per Spotify 2025 rules: http://127.0.0.1:<PORT>/callback or http://[::1]:<PORT>/callback."
+    ]
+  },
+  "executable": {
+    "cmd": "python3",
+    "args_template": [
+      "random_mb_to_spotify.py",
+      "--n", "{n}",
+      "--name", "{name}",
+      "--public", "{public}",
+      "--genres", "{genres_csv}",
+      "--per-genre-batch", "{per_genre_batch}",
+      "--artist-cap", "{artist_cap}",
+      "--markets", "{markets_csv}",
+      "--year-min", "{year_min}",
+      "--year-max", "{year_max}"
+    ],
+    "working_dir": "{project_root}",
+    "timeout_seconds": 1800
+  },
+  "io_contract": {
+    "stdout_parse": {
+      "success_regex": "\\[DONE\\] Playlist ready at: (?P<url>https?:\\/\\/open\\.spotify\\.com\\/playlist\\/[^\\s]+)",
+      "fields": {
+        "url": "string"
+      }
+    },
+    "stderr_forward": true,
+    "result_schema": {
+      "type": "object",
+      "required": ["playlist_url", "request_params"],
+      "properties": {
+        "playlist_url": { "type": "string", "format": "uri" },
+        "request_params": {
+          "type": "object",
+          "properties": {
+            "n": { "type": "integer" },
+            "name": { "type": "string" },
+            "public": { "type": "boolean" },
+            "genres_csv": { "type": "string" },
+            "per_genre_batch": { "type": "integer" },
+            "artist_cap": { "type": "integer" },
+            "markets_csv": { "type": "string" },
+            "year_min": { "type": ["integer", "null"] },
+            "year_max": { "type": ["integer", "null"] }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "parameters_schema": {
+    "type": "object",
+    "required": ["n", "name"],
+    "properties": {
+      "n": {
+        "type": "integer",
+        "title": "Track Count",
+        "description": "Number of tracks to add (1–10000).",
+        "minimum": 1,
+        "maximum": 10000,
+        "default": 1000
+      },
+      "name": {
+        "type": "string",
+        "title": "Playlist Name",
+        "description": "Name of the playlist to create.",
+        "default": "True Random via MusicBrainz"
+      },
+      "public": {
+        "type": "boolean",
+        "title": "Public Playlist",
+        "description": "Whether the playlist is public.",
+        "default": false
+      },
+      "genres": {
+        "type": "array",
+        "title": "Genres/Tags",
+        "description": "MusicBrainz tags to sample uniformly across.",
+        "items": { "type": "string", "minLength": 1 },
+        "default": []
+      },
+      "per_genre_batch": {
+        "type": "integer",
+        "title": "Per-Genre Batch",
+        "description": "Candidates emitted per tag per round.",
+        "minimum": 5,
+        "maximum": 200,
+        "default": 20
+      },
+      "artist_cap": {
+        "type": "integer",
+        "title": "Artist Cap",
+        "description": "Max tracks per primary artist.",
+        "minimum": 1,
+        "maximum": 10,
+        "default": 2
+      },
+      "markets": {
+        "type": "array",
+        "title": "Markets",
+        "description": "ISO country codes (e.g., US, GB, BR). Use ['GLOBAL'] to expand to a wide preset.",
+        "items": { "type": "string", "pattern": "^[A-Z]{2}|GLOBAL$" },
+        "default": ["GLOBAL"]
+      },
+      "year_min": {
+        "type": ["integer", "null"],
+        "title": "Earliest Release Year",
+        "description": "Inclusive lower bound on release year.",
+        "minimum": 1900,
+        "maximum": 2100,
+        "default": null
+      },
+      "year_max": {
+        "type": ["integer", "null"],
+        "title": "Latest Release Year",
+        "description": "Inclusive upper bound on release year.",
+        "minimum": 1900,
+        "maximum": 2100,
+        "default": null
+      },
+      "fresh_years": {
+        "type": ["integer", "null"],
+        "title": "Past N Years Helper",
+        "description": "If set (e.g., 5), compute year_min = current_year - (N - 1), year_max = current_year.",
+        "minimum": 1,
+        "maximum": 50,
+        "default": null
+      }
+    },
+    "additionalProperties": false
+  },
+  "defaults_and_derivations": {
+    "derive": [
+      {
+        "when": { "fresh_years": { "type": "integer" } },
+        "set": {
+          "year_max": "{current_year}",
+          "year_min": "{current_year} - ({fresh_years} - 1)"
+        }
+      },
+      {
+        "when": { "genres": { "isEmpty": true } },
+        "set": { "genres": "{DEFAULT_GENRE_TAGS}" }
+      },
+      {
+        "when": { "markets": { "contains": "GLOBAL" } },
+        "set": { "markets": "{DEFAULT_MARKETS_GLOBAL}" }
+      }
+    ],
+    "post_rules": [
+      "If year_min and year_max are both set and year_min > year_max, swap them.",
+      "Trim/normalize genre strings to lowercase and collapse duplicates.",
+      "Uppercase market codes; drop invalid codes (non-2-letter) and CN."
+    ]
+  },
+  "natural_language_mapping": {
+    "intent": "create_playlist",
+    "examples": [
+      {
+        "user": "make me a 3000 song global hyper-random playlist, modern stuff only",
+        "params": { "n": 3000, "name": "Modern Global Random", "markets": ["GLOBAL"], "fresh_years": 5 }
+      },
+      {
+        "user": "i want 90s hip hop and r&b worldwide",
+        "params": {
+          "n": 1000,
+          "name": "90s Hip Hop & RnB",
+          "genres": ["hip hop", "r&b"],
+          "year_min": 1990,
+          "year_max": 1999,
+          "markets": ["GLOBAL"]
+        }
+      },
+      {
+        "user": "give me 500 edm/techno from europe only, public playlist",
+        "params": {
+          "n": 500,
+          "name": "Euro Club Run",
+          "public": true,
+          "genres": ["edm", "techno", "house"],
+          "markets": ["GB", "DE", "FR", "NL", "BE", "ES", "IT", "SE", "NO", "DK"]
+        }
+      },
+      {
+        "user": "2000 songs, random across everything, no constraints",
+        "params": { "n": 2000, "name": "Chaos Mode", "markets": ["GLOBAL"] }
+      }
+    ],
+    "heuristics": [
+      "If the user mentions 'last N years' or 'past N years', set fresh_years = N.",
+      "If the user names decades (e.g., '90s'), set year_min/year_max accordingly (1990–1999).",
+      "If the user names regions (e.g., 'Latin America', 'Europe', 'Asia'), map to market presets.",
+      "If no playlist name is supplied, synthesize from key attributes (e.g., '{Region/Global} {Genres/Random} {YearRange or FreshN}')."
+    ]
+  },
+  "arg_rendering": {
+    "genres_csv": "{genres.join(',')}",
+    "markets_csv": "{markets.join(',')}",
+    "public": "{public ? 'true' : 'false'}",
+    "year_min": "{year_min ?? ''}",
+    "year_max": "{year_max ?? ''}"
+  },
+  "post_execution": {
+    "on_success": {
+      "emit_result": {
+        "playlist_url": "{stdout.captures.url}",
+        "request_params": {
+          "n": "{n}",
+          "name": "{name}",
+          "public": "{public}",
+          "genres_csv": "{genres_csv}",
+          "per_genre_batch": "{per_genre_batch}",
+          "artist_cap": "{artist_cap}",
+          "markets_csv": "{markets_csv}",
+          "year_min": "{year_min}",
+          "year_max": "{year_max}"
+        }
+      }
+    },
+    "on_failure": {
+      "retry_policy": {
+        "max_retries": 2,
+        "backoff_seconds": 10
+      },
+      "surface_logs": true
+    }
+  },
+  "presets": {
+    "regions_to_markets": {
+      "global": ["GLOBAL"],
+      "europe": ["GB","IE","DE","FR","NL","BE","LU","CH","AT","IT","ES","PT","SE","NO","DK","FI","PL","CZ","RO","HU","GR","TR","UA"],
+      "latin_america": ["MX","BR","AR","CL","CO","PE","VE"],
+      "asia": ["JP","KR","HK","TW","SG","MY","TH","VN","PH","ID","IN"],
+      "mena": ["AE","SA","EG","MA","IL"],
+      "africa": ["ZA","NG","KE","EG","MA"],
+      "oceania": ["AU","NZ"],
+      "north_america": ["US","CA","MX"]
+    }
+  },
+  "security": {
+    "notes": [
+      "Never log client secrets.",
+      "Mask OAuth tokens in logs.",
+      "Reject requests where n > 10000.",
+      "Validate year ranges; reject absurd inputs (e.g., year < 1900, > 2100)."
+    ]
+  }
+}

@@ -1,0 +1,14 @@
+{
+    "n": 1000,
+    "name": "90s Hip Hop & RnB",
+    "public": true,
+    "genres": ["hip hop", "r&b"],
+    "per_genre_batch": 30,
+    "artist_cap": 2,
+    "markets": ["GLOBAL"],
+    "year_min": 1990,
+    "year_max": 1999,
+    "fresh_years": null
+  }
+  
+  

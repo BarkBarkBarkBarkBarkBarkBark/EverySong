@@ -1,0 +1,16 @@
+{
+    "playlist_url": "https://open.spotify.com/playlist/3CkXyAbCdEfGhIjKlMnOpQ",
+    "request_params": {
+      "n": 1500,
+      "name": "Modern Global Random",
+      "public": false,
+      "genres_csv": "",
+      "per_genre_batch": 25,
+      "artist_cap": 2,
+      "markets_csv": "GLOBAL",
+      "year_min": 2021,
+      "year_max": 2025
+    }
+  }
+  
+  

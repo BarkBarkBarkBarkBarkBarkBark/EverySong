@@ -1,0 +1,13 @@
+{
+    "n": 1500,
+    "name": "Modern Global Random",
+    "public": false,
+    "genres": [],
+    "per_genre_batch": 25,
+    "artist_cap": 2,
+    "markets": ["GLOBAL"],
+    "fresh_years": 5,
+    "year_min": null,
+    "year_max": null
+  }
+  
