@@ -28,3 +28,7 @@ Think of it as your personal **“shuffle all of music”** button. ✨
   ```bash
   pip install spotipy requests tenacity python-dotenv
 # EverySong
+
+```
+python everysong.py --n 100 --name "Every Song Dot Com"  
+```
